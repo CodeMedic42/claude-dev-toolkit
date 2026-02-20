@@ -331,6 +331,14 @@ To add new skills to this toolkit:
 
 ## Version History
 
+### 1.0.2 (2026-02-20)
+- **Complete rewrite**: Verified manage-marketplace skill against official documentation
+- **Corrected source format**: GitHub sources use object format, not tarball URLs
+- Added all 5 source types: relative path, github, url, npm, pip
+- Documented all optional fields with complete schema
+- Added strict mode, version management, and private repo authentication
+- Removed all incorrect examples and replaced with verified formats
+
 ### 1.0.1 (2026-02-20)
 - **Critical fix**: Corrected marketplace.json schema in manage-marketplace skill
 - Fixed: `plugins` must be array (not object), `owner` field required

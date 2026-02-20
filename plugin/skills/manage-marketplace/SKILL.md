@@ -7,6 +7,8 @@ description: Expert knowledge for creating, hosting, and using Claude Code plugi
 
 You are an expert in Claude Code plugin marketplaces. Guide users through creating, hosting, and using marketplaces to distribute and discover plugins.
 
+**IMPORTANT**: This skill contains the verified schema from official Claude Code documentation. All examples and formats are accurate as of the documentation fetch.
+
 ## What Are Plugin Marketplaces?
 
 Plugin marketplaces are **collections of plugins** that users can browse, search, and install from. They enable:
@@ -19,139 +21,319 @@ Plugin marketplaces are **collections of plugins** that users can browse, search
 
 ## Marketplace Types
 
-### 1. GitHub Marketplace
+### 1. GitHub Marketplace (Recommended)
 
-Host marketplace manifest on GitHub (most common).
+Host marketplace in a GitHub repository.
 
 **Advantages**:
 - Free hosting
-- Built-in versioning with git
+- Built-in version control
 - Easy collaboration via PRs
-- Automatic updates via CI/CD
-- GitHub's CDN for fast downloads
+- Issue tracking
+- GitHub authentication built-in
 
-**Example**:
+**How users add it**:
 ```
-https://github.com/your-org/claude-plugins-marketplace
-```
-
-### 2. npm Marketplace
-
-Publish marketplace as npm package.
-
-**Advantages**:
-- Familiar to JavaScript developers
-- Built-in versioning with npm
-- Package registry infrastructure
-- Scoped packages for private marketplaces
-
-**Example**:
-```
-@your-org/claude-marketplace
+/plugin marketplace add owner/repo
 ```
 
-### 3. File-Based Marketplace
+### 2. Git Repository
 
-Serve marketplace manifest from any HTTP server.
+Any git hosting service (GitLab, Bitbucket, self-hosted).
 
-**Advantages**:
-- Full control over hosting
-- Can use existing infrastructure
-- Custom authentication possible
-- Works with corporate firewalls
-
-**Example**:
+**How users add it**:
 ```
-https://plugins.example.com/marketplace.json
+/plugin marketplace add https://gitlab.com/company/plugins.git
 ```
 
-### 4. Custom Marketplace
+### 3. Local Directory
 
-Build custom discovery and distribution systems.
+For testing or local-only distribution.
 
-**Advantages**:
-- Complete customization
-- Integration with existing systems
-- Advanced search and filtering
-- Custom authentication and authorization
+**How users add it**:
+```
+/plugin marketplace add ./path/to/marketplace
+```
 
-## Marketplace Manifest Format
+## Complete Marketplace Schema
 
-Every marketplace has a `marketplace.json` file:
+### marketplace.json Structure
 
 ```json
 {
-  "name": "my-marketplace",
-  "version": "1.0.0",
-  "description": "Collection of Claude Code plugins",
+  "name": "marketplace-name",
   "owner": {
-    "name": "Your Name"
+    "name": "Owner Name",
+    "email": "optional@email.com"
+  },
+  "metadata": {
+    "description": "Optional marketplace description",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "plugin-name",
-      "description": "What this plugin does",
+      "source": "./plugins/my-plugin",
+      "description": "Plugin description",
       "version": "1.0.0",
-      "author": "Author Name",
-      "repository": "https://github.com/user/plugin-name",
-      "source": "https://github.com/user/plugin-name/archive/refs/tags/v1.0.0.tar.gz",
-      "keywords": ["tag1", "tag2"],
-      "license": "MIT"
+      "author": {
+        "name": "Author Name",
+        "email": "optional@email.com"
+      },
+      "homepage": "https://docs.example.com",
+      "repository": "https://github.com/user/plugin",
+      "license": "MIT",
+      "keywords": ["keyword1", "keyword2"],
+      "category": "productivity",
+      "tags": ["tag1", "tag2"],
+      "strict": true,
+      "commands": "./commands",
+      "agents": ["./agents/agent1.md", "./agents/agent2.md"],
+      "hooks": "./hooks/hooks.json",
+      "mcpServers": "./mcp.json",
+      "lspServers": "./lsp.json"
     }
   ]
 }
 ```
 
-### Required Fields
+## Required Fields
 
-| Field | Description |
-|:------|:------------|
-| `name` | Marketplace identifier |
-| `version` | Marketplace version (semantic) |
-| `owner` | Object with owner information (at minimum: `name`) |
-| `plugins` | **Array** of plugin metadata objects |
+### Marketplace Level
+
+| Field | Type | Description | Example |
+|:------|:-----|:------------|:--------|
+| `name` | string | Marketplace identifier (kebab-case, public-facing) | `"acme-tools"` |
+| `owner` | object | Maintainer information (see owner fields below) | `{"name": "Team Name"}` |
+| `plugins` | array | List of plugin entries | `[{...}]` |
+
+**Reserved marketplace names**: Cannot use `claude-code-marketplace`, `claude-code-plugins`, `claude-plugins-official`, `anthropic-marketplace`, `anthropic-plugins`, `agent-skills`, `life-sciences`, or names that impersonate official marketplaces.
 
 ### Owner Fields
 
+| Field | Type | Required | Description |
+|:------|:-----|:---------|:------------|
+| `name` | string | **Yes** | Name of maintainer or team |
+| `email` | string | No | Contact email |
+
+### Plugin Entry Required Fields
+
+| Field | Type | Description |
+|:------|:-----|:------------|
+| `name` | string | Plugin identifier (kebab-case, public-facing) |
+| `source` | string\|object | Where to fetch the plugin (see source types below) |
+
+## Optional Fields
+
+### Marketplace Metadata (Optional)
+
+| Field | Type | Description |
+|:------|:-----|:------------|
+| `metadata.description` | string | Brief marketplace description |
+| `metadata.version` | string | Marketplace version |
+| `metadata.pluginRoot` | string | Base directory prepended to relative plugin paths (e.g., `"./plugins"` lets you write `"source": "formatter"` instead of `"source": "./plugins/formatter"`) |
+
+### Plugin Entry Optional Fields
+
+**Standard metadata**:
+
+| Field | Type | Description |
+|:------|:-----|:------------|
+| `description` | string | Brief plugin description |
+| `version` | string | Plugin version (semantic versioning) |
+| `author` | object | Plugin author: `{"name": "Author Name", "email": "optional@email.com"}` |
+| `homepage` | string | Plugin homepage or documentation URL |
+| `repository` | string | Source code repository URL |
+| `license` | string | SPDX license identifier (e.g., `"MIT"`, `"Apache-2.0"`) |
+| `keywords` | array | Tags for plugin discovery: `["keyword1", "keyword2"]` |
+| `category` | string | Plugin category for organization |
+| `tags` | array | Tags for searchability |
+| `strict` | boolean | Whether `plugin.json` is authority (default: `true`). See strict mode below. |
+
+**Component configuration**:
+
+| Field | Type | Description |
+|:------|:-----|:------------|
+| `commands` | string\|array | Custom paths to command files or directories |
+| `agents` | string\|array | Custom paths to agent files |
+| `hooks` | string\|object | Hooks configuration or path to hooks file |
+| `mcpServers` | string\|object | MCP server config or path to MCP config |
+| `lspServers` | string\|object | LSP server config or path to LSP config |
+
+## Plugin Source Types
+
+The `source` field tells Claude Code where to fetch each plugin.
+
+### 1. Relative Path (String)
+
+For plugins in the same repository as the marketplace:
+
+```json
+{
+  "name": "my-plugin",
+  "source": "./plugins/my-plugin"
+}
+```
+
+**Requirements**:
+- Must start with `./`
+- Only works when marketplace is added via Git (not direct URL to marketplace.json)
+- Path is relative to marketplace repository root
+
+### 2. GitHub Repository (Object)
+
+```json
+{
+  "name": "github-plugin",
+  "source": {
+    "source": "github",
+    "repo": "owner/repo-name"
+  }
+}
+```
+
+**With version pinning**:
+```json
+{
+  "name": "github-plugin",
+  "source": {
+    "source": "github",
+    "repo": "owner/repo-name",
+    "ref": "v2.0.0",
+    "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+  }
+}
+```
+
+**GitHub source fields**:
+
 | Field | Required | Description |
 |:------|:---------|:------------|
-| `name` | Yes | Owner name or organization |
-| `email` | No | Contact email |
+| `source` | **Yes** | Must be `"github"` |
+| `repo` | **Yes** | Repository in `owner/repo` format |
+| `ref` | No | Git branch or tag (defaults to repo default branch) |
+| `sha` | No | Full 40-character commit SHA to pin to exact version |
 
-### Plugin Entry Fields
+### 3. Git Repository URL (Object)
+
+For GitLab, Bitbucket, or any git host:
+
+```json
+{
+  "name": "git-plugin",
+  "source": {
+    "source": "url",
+    "url": "https://gitlab.com/team/plugin.git"
+  }
+}
+```
+
+**With version pinning**:
+```json
+{
+  "name": "git-plugin",
+  "source": {
+    "source": "url",
+    "url": "https://gitlab.com/team/plugin.git",
+    "ref": "main",
+    "sha": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
+  }
+}
+```
+
+**Git URL source fields**:
 
 | Field | Required | Description |
 |:------|:---------|:------------|
-| `name` | Yes | Plugin identifier |
-| `description` | Yes | Brief description |
-| `version` | Yes | Plugin version |
-| `source` | Yes | Download URL (tar.gz or zip) |
-| `author` | No | Author name or organization |
-| `repository` | No | Source code URL |
-| `homepage` | No | Documentation URL |
-| `keywords` | No | Array of search tags |
-| `license` | No | SPDX license identifier |
+| `source` | **Yes** | Must be `"url"` |
+| `url` | **Yes** | Full git repository URL (must end with `.git`) |
+| `ref` | No | Git branch or tag (defaults to repo default branch) |
+| `sha` | No | Full 40-character commit SHA to pin to exact version |
+
+### 4. npm Package (Object)
+
+```json
+{
+  "name": "npm-plugin",
+  "source": {
+    "source": "npm",
+    "package": "@scope/package-name",
+    "version": "1.0.0",
+    "registry": "https://registry.npmjs.org"
+  }
+}
+```
+
+**npm source fields**:
+
+| Field | Required | Description |
+|:------|:---------|:------------|
+| `source` | **Yes** | Must be `"npm"` |
+| `package` | **Yes** | npm package name (can be scoped: `@org/package`) |
+| `version` | No | Package version (defaults to latest) |
+| `registry` | No | Custom npm registry URL |
+
+### 5. pip Package (Object)
+
+```json
+{
+  "name": "pip-plugin",
+  "source": {
+    "source": "pip",
+    "package": "package-name",
+    "version": "1.0.0",
+    "registry": "https://pypi.org/simple"
+  }
+}
+```
+
+**pip source fields**:
+
+| Field | Required | Description |
+|:------|:---------|:------------|
+| `source` | **Yes** | Must be `"pip"` |
+| `package` | **Yes** | Python package name |
+| `version` | No | Package version (defaults to latest) |
+| `registry` | No | Custom PyPI registry URL |
+
+## Strict Mode
+
+The `strict` field controls whether `plugin.json` is the authority for component definitions.
+
+| Value | Behavior |
+|:------|:---------|
+| `true` (default) | `plugin.json` is the authority. Marketplace entry can supplement with additional components. Both sources are merged. |
+| `false` | Marketplace entry is the entire definition. If plugin also has `plugin.json` declaring components, that's a conflict and plugin fails to load. |
+
+**When to use**:
+- **`strict: true`**: Plugin manages its own components via `plugin.json`. Marketplace can add extras.
+- **`strict: false`**: Marketplace operator wants full control. Plugin provides files, marketplace defines what's exposed.
 
 ## Create a GitHub Marketplace
 
 ### Step 1: Create Repository
 
 ```bash
-mkdir claude-plugins-marketplace
-cd claude-plugins-marketplace
+mkdir my-marketplace
+cd my-marketplace
 git init
 ```
 
 ### Step 2: Create Marketplace Manifest
 
 ```bash
-cat > marketplace.json << 'EOF'
+mkdir -p .claude-plugin
+cat > .claude-plugin/marketplace.json << 'EOF'
 {
   "name": "my-marketplace",
-  "version": "1.0.0",
-  "description": "Curated collection of Claude Code plugins",
   "owner": {
-    "name": "Your Name"
+    "name": "Your Name",
+    "email": "you@example.com"
+  },
+  "metadata": {
+    "description": "My curated Claude Code plugins",
+    "version": "1.0.0"
   },
   "plugins": []
 }
@@ -160,35 +342,44 @@ EOF
 
 ### Step 3: Add Plugins
 
+**Option A: Plugins in same repo (relative paths)**:
+
 ```json
 {
   "name": "my-marketplace",
-  "version": "1.0.0",
-  "description": "Curated collection of Claude Code plugins",
   "owner": {
-    "name": "Your Name",
-    "email": "you@example.com"
+    "name": "Your Name"
   },
   "plugins": [
     {
-      "name": "git-workflows",
-      "description": "Enhanced git workflow commands",
+      "name": "review-tools",
+      "source": "./plugins/review-tools",
+      "description": "Code review automation",
       "version": "1.0.0",
-      "author": "Your Name",
-      "repository": "https://github.com/your-org/git-workflows-plugin",
-      "source": "https://github.com/your-org/git-workflows-plugin/archive/refs/tags/v1.0.0.tar.gz",
-      "keywords": ["git", "workflow", "automation"],
-      "license": "MIT"
-    },
+      "author": {
+        "name": "Your Name"
+      }
+    }
+  ]
+}
+```
+
+**Option B: Plugins from GitHub**:
+
+```json
+{
+  "name": "my-marketplace",
+  "owner": {
+    "name": "Your Name"
+  },
+  "plugins": [
     {
-      "name": "code-review",
-      "description": "Automated code review tools",
-      "version": "2.0.0",
-      "author": "Your Name",
-      "repository": "https://github.com/your-org/code-review-plugin",
-      "source": "https://github.com/your-org/code-review-plugin/archive/refs/tags/v2.0.0.tar.gz",
-      "keywords": ["review", "quality", "security"],
-      "license": "MIT"
+      "name": "review-tools",
+      "source": {
+        "source": "github",
+        "repo": "your-username/review-tools-plugin"
+      },
+      "description": "Code review automation"
     }
   ]
 }
@@ -198,27 +389,24 @@ EOF
 
 ```bash
 cat > README.md << 'EOF'
-# My Claude Plugins Marketplace
+# My Claude Marketplace
 
-Curated collection of Claude Code plugins for our team.
+Curated collection of Claude Code plugins.
 
 ## Installation
 
 ```bash
-/plugin marketplace add https://raw.githubusercontent.com/your-org/claude-plugins-marketplace/main/marketplace.json
+/plugin marketplace add your-username/my-marketplace
 ```
 
 ## Available Plugins
 
-### git-workflows
-Enhanced git workflow commands for common tasks.
-
-### code-review
-Automated code review tools with security scanning.
+### review-tools
+Code review automation tools.
 
 ## Contributing
 
-To add a plugin to this marketplace, submit a PR updating `marketplace.json`.
+Submit a PR to add your plugin to this marketplace.
 EOF
 ```
 
@@ -226,154 +414,149 @@ EOF
 
 ```bash
 git add .
-git commit -m "Initial marketplace with plugins"
-git remote add origin https://github.com/your-org/claude-plugins-marketplace.git
+git commit -m "Initial marketplace"
+git remote add origin https://github.com/your-username/my-marketplace.git
 git push -u origin main
 ```
 
-### Step 6: Share Marketplace URL
+### Step 6: Share with Users
 
-Users install with:
+Users add your marketplace:
 ```
-/plugin marketplace add https://raw.githubusercontent.com/your-org/claude-plugins-marketplace/main/marketplace.json
-```
-
-## Create an npm Marketplace
-
-### Step 1: Initialize npm Package
-
-```bash
-mkdir claude-marketplace
-cd claude-marketplace
-npm init -y
+/plugin marketplace add your-username/my-marketplace
 ```
 
-### Step 2: Create Marketplace Manifest
+Then install plugins:
+```
+/plugin install review-tools@my-marketplace
+```
 
-```bash
-cat > marketplace.json << 'EOF'
+## Complete Example
+
+### Comprehensive Marketplace
+
+```json
 {
-  "name": "@your-org/claude-marketplace",
-  "version": "1.0.0",
-  "description": "Claude Code plugins for our organization",
+  "name": "acme-tools",
   "owner": {
-    "name": "Your Organization"
+    "name": "ACME DevTools Team",
+    "email": "devtools@acme.com"
+  },
+  "metadata": {
+    "description": "ACME Corp development tools",
+    "version": "2.0.0",
+    "pluginRoot": "./plugins"
   },
   "plugins": [
     {
-      "name": "internal-tools",
-      "description": "Internal development tools",
-      "version": "1.0.0",
-      "source": "https://internal.example.com/plugins/internal-tools-1.0.0.tar.gz"
-    }
-  ]
-}
-EOF
-```
-
-### Step 3: Update package.json
-
-```json
-{
-  "name": "@your-org/claude-marketplace",
-  "version": "1.0.0",
-  "description": "Claude Code plugin marketplace",
-  "main": "marketplace.json",
-  "files": ["marketplace.json"],
-  "keywords": ["claude", "plugins", "marketplace"],
-  "license": "MIT"
-}
-```
-
-### Step 4: Publish to npm
-
-```bash
-npm login
-npm publish --access public
-```
-
-### Step 5: Share Package Name
-
-Users install with:
-```
-/plugin marketplace add npm:@your-org/claude-marketplace
-```
-
-## Publish a Plugin to a Marketplace
-
-### As Plugin Author
-
-**1. Create GitHub release with tarball**:
-```bash
-# Tag your plugin
-git tag v1.0.0
-git push origin v1.0.0
-
-# GitHub automatically creates tarball at:
-# https://github.com/user/plugin/archive/refs/tags/v1.0.0.tar.gz
-```
-
-**2. Submit PR to marketplace**:
-
-Add your plugin to the `plugins` array:
-
-```json
-{
-  "plugins": [
+      "name": "code-formatter",
+      "source": "formatter",
+      "description": "Automatic code formatting on save",
+      "version": "2.1.0",
+      "author": {
+        "name": "DevTools Team",
+        "email": "devtools@acme.com"
+      },
+      "homepage": "https://docs.acme.com/formatter",
+      "repository": "https://github.com/acme/formatter-plugin",
+      "license": "MIT",
+      "keywords": ["formatting", "style", "automation"],
+      "category": "productivity",
+      "hooks": {
+        "PostToolUse": [
+          {
+            "matcher": "Write|Edit",
+            "hooks": [
+              {
+                "type": "command",
+                "command": "${CLAUDE_PLUGIN_ROOT}/scripts/format.sh"
+              }
+            ]
+          }
+        ]
+      }
+    },
     {
-      "name": "your-plugin",
-      "description": "What your plugin does",
-      "version": "1.0.0",
-      "author": "Your Name",
-      "repository": "https://github.com/user/your-plugin",
-      "source": "https://github.com/user/your-plugin/archive/refs/tags/v1.0.0.tar.gz",
-      "keywords": ["keyword1", "keyword2"],
-      "license": "MIT"
+      "name": "deployment-tools",
+      "source": {
+        "source": "github",
+        "repo": "acme/deployment-plugin",
+        "ref": "v3.0.0"
+      },
+      "description": "Deployment automation for production",
+      "author": {
+        "name": "DevOps Team"
+      },
+      "keywords": ["deployment", "ci-cd", "production"],
+      "category": "deployment"
+    },
+    {
+      "name": "security-scanner",
+      "source": {
+        "source": "url",
+        "url": "https://gitlab.acme.com/security/scanner-plugin.git"
+      },
+      "description": "Security vulnerability scanning",
+      "author": {
+        "name": "Security Team"
+      },
+      "keywords": ["security", "scanning", "vulnerabilities"],
+      "agents": ["./agents/security-reviewer.md"]
     }
   ]
 }
 ```
 
-**3. Wait for marketplace maintainer approval**
+## Using Variables in Plugin Configurations
 
-### As Marketplace Maintainer
+Use `${CLAUDE_PLUGIN_ROOT}` to reference files within the plugin:
 
-**Review checklist**:
-- [ ] Plugin has valid `plugin.json` manifest
-- [ ] Source URL is accessible
-- [ ] Version follows semantic versioning
-- [ ] Description is clear and accurate
-- [ ] Keywords are relevant
-- [ ] License is specified
-- [ ] No malicious code (security review)
-- [ ] Plugin name doesn't conflict with existing
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "mcpServers": {
+    "plugin-service": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/server",
+      "args": ["--config", "${CLAUDE_PLUGIN_ROOT}/config.json"]
+    }
+  }
+}
+```
 
-**Approval process**:
-1. Review PR changes
-2. Test plugin installation
-3. Verify plugin functionality
-4. Merge PR
-5. Increment marketplace version
-6. Users get update automatically
+This is necessary because plugins are copied to a cache location when installed.
 
 ## Install from Marketplace
 
-### Add Marketplace Source
+### Add Marketplace
 
-Use the **raw GitHub URL** (not the repo URL):
-
+**From GitHub**:
 ```
-/plugin marketplace add https://raw.githubusercontent.com/org/marketplace/main/marketplace.json
-```
-
-Or with a custom name:
-```
-/plugin marketplace add my-team https://raw.githubusercontent.com/org/marketplace/main/marketplace.json
+/plugin marketplace add owner/repo
 ```
 
-**Important**: Must be the direct URL to `marketplace.json`, not a git repository URL.
+**From Git URL**:
+```
+/plugin marketplace add https://gitlab.com/team/marketplace.git
+```
 
-### List Available Marketplaces
+**From local directory**:
+```
+/plugin marketplace add ./my-marketplace
+```
+
+### List Marketplaces
 
 ```
 /plugin marketplace list
@@ -385,15 +568,13 @@ Or with a custom name:
 /plugin search keyword
 ```
 
-Claude shows plugins matching the keyword from all configured marketplaces.
-
 ### Install Plugin
 
 ```
 /plugin install plugin-name
 ```
 
-If multiple marketplaces have the same plugin:
+If plugin exists in multiple marketplaces:
 ```
 /plugin install plugin-name@marketplace-name
 ```
@@ -417,135 +598,200 @@ Or update all:
 
 ## Version Management
 
-### Semantic Versioning
+### Plugin Versions
 
-Both marketplaces and plugins use semantic versioning:
+You can specify version in:
+1. Plugin's `plugin.json` (takes precedence)
+2. Marketplace entry
 
-```
-MAJOR.MINOR.PATCH
-```
+**Warning**: If both specify version, plugin manifest wins silently. For relative-path plugins, set version in marketplace entry. For external plugins, set in plugin manifest.
 
-- **MAJOR**: Breaking changes
-- **MINOR**: New features, backwards-compatible
-- **PATCH**: Bug fixes
+### Release Channels
 
-### Update Plugin Version
+Create separate marketplaces pointing to different refs:
 
-When releasing a new plugin version:
-
-**1. Update plugin version**:
-```json
-{
-  "name": "my-plugin",
-  "version": "1.1.0"  // Was 1.0.0
-}
-```
-
-**2. Create git tag**:
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-**3. Update marketplace** (find the plugin in the array and update):
+**Stable marketplace**:
 ```json
 {
   "plugins": [
     {
-      "name": "my-plugin",
-      "version": "1.1.0",
-      "source": "https://github.com/user/my-plugin/archive/refs/tags/v1.1.0.tar.gz"
+      "name": "my-tool",
+      "source": {
+        "source": "github",
+        "repo": "org/my-tool",
+        "ref": "stable"
+      }
     }
   ]
 }
 ```
 
-**4. Increment marketplace version**:
+**Latest marketplace**:
 ```json
 {
-  "name": "my-marketplace",
-  "version": "1.0.1"  // Was 1.0.0
+  "plugins": [
+    {
+      "name": "my-tool",
+      "source": {
+        "source": "github",
+        "repo": "org/my-tool",
+        "ref": "latest"
+      }
+    }
+  ]
 }
 ```
 
-## Private Enterprise Marketplaces
+**Important**: Plugin manifest must have different `version` at each ref, or Claude Code treats them as identical.
 
-### Requirements
+## Private Repositories
 
-- Internal hosting (file server, S3, internal GitHub)
-- Network access from developer machines
-- Optional: Authentication
+### Authentication
 
-### Example: S3-Hosted Marketplace
+**For manual operations**: Uses your git credential helpers (same as `git clone`).
 
-**1. Create marketplace manifest**:
+**For auto-updates at startup**: Set environment variable:
+
+| Provider | Environment Variable |
+|:---------|:---------------------|
+| GitHub | `GITHUB_TOKEN` or `GH_TOKEN` |
+| GitLab | `GITLAB_TOKEN` or `GL_TOKEN` |
+| Bitbucket | `BITBUCKET_TOKEN` |
+
+Set in shell config:
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+## Project Configuration
+
+### Auto-prompt Team Members
+
+Add to `.claude/settings.json`:
+
 ```json
 {
-  "name": "acme-internal",
-  "version": "1.0.0",
-  "description": "ACME Corp internal plugins",
-  "owner": {
-    "name": "ACME Corp DevTools"
+  "extraKnownMarketplaces": {
+    "company-tools": {
+      "source": {
+        "source": "github",
+        "repo": "your-org/claude-plugins"
+      }
+    }
   },
-  "plugins": [
+  "enabledPlugins": {
+    "code-formatter@company-tools": true,
+    "deployment-tools@company-tools": true
+  }
+}
+```
+
+Team members are prompted to install when they trust the folder.
+
+### Restrict Allowed Marketplaces
+
+Administrators can restrict which marketplaces users can add using managed settings:
+
+```json
+{
+  "strictKnownMarketplaces": [
     {
-      "name": "acme-tools",
-      "description": "Internal development tools",
-      "version": "1.0.0",
-      "source": "https://acme-plugins.s3.amazonaws.com/acme-tools-1.0.0.tar.gz"
+      "source": "github",
+      "repo": "acme-corp/approved-plugins"
+    },
+    {
+      "source": "url",
+      "url": "https://plugins.example.com/marketplace.json"
     }
   ]
 }
 ```
 
-**2. Upload to S3**:
+| Value | Behavior |
+|:------|:---------|
+| Undefined | No restrictions |
+| `[]` | Complete lockdown - no marketplaces allowed |
+| List | Only listed marketplaces allowed |
+
+## Validation and Testing
+
+### Validate Marketplace
+
 ```bash
-aws s3 cp marketplace.json s3://acme-plugins/marketplace.json --acl public-read
+claude plugin validate .
 ```
 
-**3. Share internal URL**:
+Or from within Claude Code:
 ```
-/plugin marketplace add acme https://acme-plugins.s3.amazonaws.com/marketplace.json
-```
-
-### Example: Authenticated Marketplace
-
-For marketplaces requiring authentication:
-
-**1. Set up HTTP server with auth**:
-```javascript
-// server.js
-const express = require('express');
-const app = express();
-
-app.use((req, res, next) => {
-  const auth = req.headers['authorization'];
-  if (auth !== 'Bearer YOUR_TOKEN') {
-    return res.status(401).send('Unauthorized');
-  }
-  next();
-});
-
-app.get('/marketplace.json', (req, res) => {
-  res.sendFile(__dirname + '/marketplace.json');
-});
-
-app.listen(3000);
+/plugin validate .
 ```
 
-**2. Configure authentication**:
+### Test Locally
+
 ```bash
-export CLAUDE_MARKETPLACE_TOKEN="YOUR_TOKEN"
+# Add local marketplace
+/plugin marketplace add ./my-marketplace
+
+# Install test plugin
+/plugin install test-plugin@my-marketplace
+
+# Test the plugin works
+/test-plugin-command
 ```
 
-**3. Add marketplace with auth**:
-```
-/plugin marketplace add private https://marketplace.example.com/marketplace.json
-```
+## Troubleshooting
 
-Claude automatically includes the token in requests.
+### Schema Validation Errors
 
-## Automate Marketplace Updates
+**Error**: `plugins: Invalid input: expected array, received object`
+- **Fix**: Change `"plugins": {}` to `"plugins": []`
+
+**Error**: `owner: Invalid input: expected object, received undefined`
+- **Fix**: Add `"owner": {"name": "Your Name"}`
+
+**Error**: `plugins.0.author: Invalid input: expected object, received string`
+- **Fix**: Change `"author": "Name"` to `"author": {"name": "Name"}`
+
+**Error**: `plugins.0.source: Invalid input`
+- **Fix**: For GitHub, use object format: `{"source": "github", "repo": "owner/repo"}`
+- Don't use tarball URLs directly
+
+### Marketplace Not Loading
+
+- Verify marketplace URL is accessible
+- Check `.claude-plugin/marketplace.json` exists at root
+- Validate JSON syntax with `jq .`
+- For private repos, verify authentication
+
+### Plugin Installation Failures
+
+- Verify plugin source is accessible
+- For GitHub sources, ensure repository exists
+- Check plugin has required files
+- Test source manually by cloning
+
+### Relative Path Failures in URL-Based Marketplaces
+
+**Problem**: Added marketplace via URL (e.g., `https://example.com/marketplace.json`), but plugins with relative paths fail.
+
+**Cause**: URL-based marketplaces only download `marketplace.json`, not plugin files.
+
+**Solutions**:
+1. Use GitHub/git sources instead of relative paths
+2. Host marketplace in Git repository and add via git URL
+
+### Private Repository Auth Failures
+
+**For manual operations**:
+- Verify git credentials: `gh auth status` (GitHub) or equivalent
+- Test cloning manually
+
+**For auto-updates**:
+- Verify token is exported: `echo $GITHUB_TOKEN`
+- Check token has repository read permission
+- Ensure token hasn't expired
+
+## Automation
 
 ### Bash Script to Add Plugin
 
@@ -554,393 +800,155 @@ Claude automatically includes the token in requests.
 # add-plugin.sh
 
 PLUGIN_NAME=$1
-VERSION=$2
-REPO=$3
-DESC=$4
-AUTHOR=$5
+REPO=$2
+DESC=$3
 
-# Create new plugin entry
-NEW_PLUGIN=$(jq -n \
-  --arg name "$PLUGIN_NAME" \
-  --arg desc "$DESC" \
-  --arg version "$VERSION" \
-  --arg author "$AUTHOR" \
-  --arg repo "$REPO" \
-  --arg source "$REPO/archive/refs/tags/v$VERSION.tar.gz" \
-  '{
-    name: $name,
-    description: $desc,
-    version: $version,
-    author: $author,
-    repository: $repo,
-    source: $source,
-    keywords: []
-  }')
+# Add to plugins array
+jq --arg name "$PLUGIN_NAME" \
+   --arg repo "$REPO" \
+   --arg desc "$DESC" \
+   '.plugins += [{
+     name: $name,
+     source: {source: "github", repo: $repo},
+     description: $desc
+   }]' .claude-plugin/marketplace.json > tmp.json
 
-# Add to plugins array and increment marketplace version
-jq --argjson plugin "$NEW_PLUGIN" \
-   '.plugins += [$plugin] | .version = (.version | split(".") | .[2] = (.[2] | tonumber + 1 | tostring) | join("."))' \
-   marketplace.json > marketplace.new.json
+mv tmp.json .claude-plugin/marketplace.json
 
-mv marketplace.new.json marketplace.json
-
-echo "Added $PLUGIN_NAME v$VERSION to marketplace"
+echo "Added $PLUGIN_NAME"
 ```
 
 Usage:
 ```bash
-./add-plugin.sh \
-  "my-plugin" \
-  "1.0.0" \
-  "https://github.com/user/my-plugin" \
-  "Plugin description" \
-  "Author Name"
+./add-plugin.sh "my-tool" "org/my-tool" "Description"
 ```
 
-### GitHub Actions Auto-Update
+### GitHub Actions Auto-Add
 
-**In marketplace repo** (`.github/workflows/add-plugin.yml`):
+**.github/workflows/add-plugin.yml**:
 
 ```yaml
-name: Add Plugin to Marketplace
+name: Add Plugin
 
 on:
   repository_dispatch:
     types: [add-plugin]
 
 jobs:
-  add-plugin:
+  add:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Add plugin to marketplace
+      - name: Add plugin
         run: |
-          PLUGIN_NAME="${{ github.event.client_payload.name }}"
-          VERSION="${{ github.event.client_payload.version }}"
-          REPO="${{ github.event.client_payload.repository }}"
-          DESC="${{ github.event.client_payload.description }}"
-          AUTHOR="${{ github.event.client_payload.author }}"
+          jq --arg name "${{ github.event.client_payload.name }}" \
+             --arg repo "${{ github.event.client_payload.repo }}" \
+             --arg desc "${{ github.event.client_payload.description }}" \
+             '.plugins += [{
+               name: $name,
+               source: {source: "github", repo: $repo},
+               description: $desc
+             }]' .claude-plugin/marketplace.json > tmp.json
+          mv tmp.json .claude-plugin/marketplace.json
 
-          # Create plugin entry
-          NEW_PLUGIN=$(jq -n \
-            --arg name "$PLUGIN_NAME" \
-            --arg desc "$DESC" \
-            --arg version "$VERSION" \
-            --arg author "$AUTHOR" \
-            --arg repo "$REPO" \
-            --arg source "$REPO/archive/refs/tags/v$VERSION.tar.gz" \
-            '{
-              name: $name,
-              description: $desc,
-              version: $version,
-              author: $author,
-              repository: $repo,
-              source: $source,
-              keywords: []
-            }')
-
-          # Add to array and increment version
-          jq --argjson plugin "$NEW_PLUGIN" \
-             '.plugins += [$plugin] | .version = (.version | split(".") | .[2] = (.[2] | tonumber + 1 | tostring) | join("."))' \
-             marketplace.json > marketplace.new.json
-
-          mv marketplace.new.json marketplace.json
-
-      - name: Commit changes
+      - name: Commit
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add marketplace.json
-          git commit -m "Add ${{ github.event.client_payload.name }} v${{ github.event.client_payload.version }}"
+          git add .claude-plugin/marketplace.json
+          git commit -m "Add ${{ github.event.client_payload.name }}"
           git push
 ```
 
-**In plugin repo** (`.github/workflows/publish.yml`):
-
-```yaml
-name: Publish to Marketplace
-
-on:
-  release:
-    types: [published]
-
-jobs:
-  notify-marketplace:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Read plugin manifest
-        id: manifest
-        run: |
-          NAME=$(jq -r '.name' .claude-plugin/plugin.json)
-          DESC=$(jq -r '.description' .claude-plugin/plugin.json)
-          AUTHOR=$(jq -r '.author.name // "Unknown"' .claude-plugin/plugin.json)
-          echo "name=$NAME" >> $GITHUB_OUTPUT
-          echo "desc=$DESC" >> $GITHUB_OUTPUT
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
-
-      - name: Trigger marketplace update
-        run: |
-          curl -X POST \
-            -H "Accept: application/vnd.github.v3+json" \
-            -H "Authorization: token ${{ secrets.MARKETPLACE_TOKEN }}" \
-            https://api.github.com/repos/YOUR-ORG/claude-marketplace/dispatches \
-            -d '{
-              "event_type": "add-plugin",
-              "client_payload": {
-                "name": "${{ steps.manifest.outputs.name }}",
-                "version": "${{ github.event.release.tag_name }}",
-                "repository": "${{ github.event.repository.html_url }}",
-                "description": "${{ steps.manifest.outputs.desc }}",
-                "author": "${{ steps.manifest.outputs.author }}"
-              }
-            }'
-```
-
-## Marketplace Best Practices
+## Best Practices
 
 ### For Marketplace Maintainers
 
-1. **Curate carefully**: Review all plugins before adding
-2. **Security review**: Check for malicious code
-3. **Test plugins**: Verify they work before listing
-4. **Document requirements**: Clear submission guidelines
-5. **Version properly**: Increment marketplace version on changes
-6. **Keep updated**: Remove abandoned plugins
-7. **Categorize**: Use keywords for discoverability
-8. **Provide examples**: Show how to use listed plugins
+1. **Curate carefully** - Review all plugins before adding
+2. **Security review** - Check for malicious code
+3. **Test plugins** - Verify they work before listing
+4. **Document clearly** - Provide good README with examples
+5. **Use semantic versioning** - For marketplace metadata.version
+6. **Organize with keywords** - Help users discover plugins
+7. **Keep updated** - Remove abandoned plugins
 
 ### For Plugin Authors
 
-1. **Semantic versioning**: Follow MAJOR.MINOR.PATCH
-2. **Release notes**: Document changes in each version
-3. **Test thoroughly**: Don't publish broken versions
-4. **Document well**: Clear README and examples
-5. **Maintain actively**: Respond to issues promptly
-6. **License clearly**: Specify license in plugin.json
-7. **Tag releases**: Use git tags for versions
-8. **Update marketplace**: Keep marketplace entries current
+1. **Tag releases** - Use git tags for versions
+2. **Semantic versioning** - Follow MAJOR.MINOR.PATCH
+3. **Document well** - Clear README and examples
+4. **Test thoroughly** - Don't publish broken versions
+5. **Maintain actively** - Respond to issues
+6. **License clearly** - Specify in plugin.json
+7. **Use keywords** - Make plugin discoverable
 
-## Security Considerations
+## Quick Reference
 
-### For Users
-
-**When adding marketplaces**:
-- [ ] Trust the marketplace maintainer
-- [ ] Verify HTTPS URLs
-- [ ] Review marketplace source on GitHub
-- [ ] Check marketplace reputation
-- [ ] Prefer official or well-known marketplaces
-
-**When installing plugins**:
-- [ ] Review plugin description and author
-- [ ] Check source repository for red flags
-- [ ] Read plugin documentation
-- [ ] Start with trusted authors
-- [ ] Report suspicious plugins
-
-### For Maintainers
-
-**Security review checklist**:
-- [ ] Scan for obvious malware patterns
-- [ ] Review plugin code manually
-- [ ] Check for suspicious network calls
-- [ ] Verify source repository ownership
-- [ ] Test in isolated environment
-- [ ] Check dependencies for known vulnerabilities
-- [ ] Require plugins to document permissions needed
-- [ ] Remove plugins with security issues immediately
-
-**Hosting security**:
-- [ ] Use HTTPS for marketplace URLs
-- [ ] Enable CORS headers if needed
-- [ ] Implement rate limiting
-- [ ] Monitor access logs
-- [ ] Rotate authentication tokens
-- [ ] Use CDN for DDoS protection
-
-## Troubleshooting
-
-**Marketplace won't add**:
-- Verify URL is accessible (test in browser)
-- Check JSON syntax is valid with `jq .`
-- Ensure HTTPS (HTTP may be blocked)
-- Verify `owner` field is present (required)
-- Confirm `plugins` is an array, not object
-- Check network/firewall settings
-
-**Schema validation errors**:
-- Error: "plugins: expected array" → Change `"plugins": {}` to `"plugins": []`
-- Error: "owner: expected object" → Add `"owner": {"name": "Your Name"}`
-- Validate schema with: `curl URL | jq .`
-
-**Plugin won't install**:
-- Verify source URL is accessible
-- Check plugin name matches manifest
-- Ensure tarball structure is correct
-- Test source URL manually: `curl -L <url>`
-- Check for version conflicts
-
-**Updates not working**:
-- Verify marketplace version incremented
-- Check plugin version increased
-- Clear cache: `rm -rf ~/.claude/cache`
-- Re-add marketplace
-
-**Authentication failures**:
-- Verify token is exported correctly
-- Check token hasn't expired
-- Ensure token has required permissions
-- Test auth with curl first
-
-## Example Marketplaces
-
-### Community Marketplace
+### Minimal Marketplace
 
 ```json
-{
-  "name": "claude-community",
-  "version": "1.0.0",
-  "description": "Community-contributed Claude Code plugins",
-  "owner": {
-    "name": "Claude Community",
-    "email": "community@example.com"
-  },
-  "plugins": [
-    {
-      "name": "git-enhanced",
-      "description": "Enhanced git commands and workflows",
-      "version": "1.2.0",
-      "author": "Community Contributors",
-      "repository": "https://github.com/community/git-enhanced",
-      "source": "https://github.com/community/git-enhanced/archive/refs/tags/v1.2.0.tar.gz",
-      "keywords": ["git", "workflow"],
-      "license": "MIT"
-    },
-    {
-      "name": "api-tools",
-      "description": "API development and testing tools",
-      "version": "2.0.0",
-      "author": "Community Contributors",
-      "repository": "https://github.com/community/api-tools",
-      "source": "https://github.com/community/api-tools/archive/refs/tags/v2.0.0.tar.gz",
-      "keywords": ["api", "testing"],
-      "license": "Apache-2.0"
-    }
-  ]
-}
-```
-
-### Enterprise Marketplace
-
-```json
-{
-  "name": "acme-enterprise",
-  "version": "1.0.0",
-  "description": "ACME Corp approved plugins",
-  "owner": {
-    "name": "ACME Corp DevTools Team",
-    "email": "devtools@acme.com"
-  },
-  "plugins": [
-    {
-      "name": "acme-standards",
-      "description": "ACME coding standards and linters",
-      "version": "3.0.0",
-      "author": "ACME DevTools Team",
-      "repository": "https://github.acme.com/devtools/acme-standards",
-      "source": "https://artifacts.acme.com/plugins/acme-standards-3.0.0.tar.gz",
-      "keywords": ["standards", "linting", "internal"]
-    },
-    {
-      "name": "acme-deploy",
-      "description": "ACME deployment workflows",
-      "version": "2.5.0",
-      "author": "ACME DevOps Team",
-      "repository": "https://github.acme.com/devops/acme-deploy",
-      "source": "https://artifacts.acme.com/plugins/acme-deploy-2.5.0.tar.gz",
-      "keywords": ["deployment", "ci-cd", "internal"]
-    }
-  ]
-}
-```
-
-## Quick Start: Create Your First Marketplace
-
-```bash
-# 1. Create repository
-mkdir my-marketplace
-cd my-marketplace
-git init
-
-# 2. Create manifest with correct schema
-cat > marketplace.json << 'EOF'
 {
   "name": "my-marketplace",
-  "version": "1.0.0",
-  "description": "My curated Claude Code plugins",
   "owner": {
     "name": "Your Name"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "my-plugin",
+      "source": {
+        "source": "github",
+        "repo": "username/plugin-repo"
+      }
+    }
+  ]
 }
-EOF
-
-# 3. Add README
-cat > README.md << 'EOF'
-# My Claude Marketplace
-
-Install with:
-```
-/plugin marketplace add https://raw.githubusercontent.com/YOUR_USERNAME/my-marketplace/main/marketplace.json
-```
-EOF
-
-# 4. Commit and push
-git add .
-git commit -m "Initial marketplace"
-git remote add origin https://github.com/YOUR_USERNAME/my-marketplace.git
-git push -u origin main
-
-# 5. Share the URL (must be raw.githubusercontent.com)
-echo "Users can add your marketplace with:"
-echo "/plugin marketplace add https://raw.githubusercontent.com/YOUR_USERNAME/my-marketplace/main/marketplace.json"
 ```
 
-## Related Features
+### Source Type Quick Reference
 
-- Use `/claude-dev-toolkit:create-plugin` to build plugins for distribution
-- Check plugin validation before publishing
-- Review security guidelines for safe plugin development
-- Use CI/CD for automated marketplace updates
+```json
+// Relative path (string)
+"source": "./plugins/my-plugin"
+
+// GitHub (object)
+"source": {"source": "github", "repo": "owner/repo"}
+
+// Git URL (object)
+"source": {"source": "url", "url": "https://host.com/repo.git"}
+
+// npm (object)
+"source": {"source": "npm", "package": "package-name"}
+
+// pip (object)
+"source": {"source": "pip", "package": "package-name"}
+```
+
+## Related Skills
+
+- Use `/claude-dev-toolkit:create-plugin` to build plugins
+- Use `/claude-dev-toolkit:create-skill` to add plugin components
+- Use `/claude-dev-toolkit:create-agent` for specialized subagents
 
 ## Additional Resources
 
 - Official docs: https://code.claude.com/docs/en/plugin-marketplaces
 - Plugin discovery: https://code.claude.com/docs/en/discover-plugins
-- Example marketplaces: https://github.com/anthropics/claude-marketplaces
-- Semantic versioning: https://semver.org
+- Plugin creation: https://code.claude.com/docs/en/plugins
+- Plugin reference: https://code.claude.com/docs/en/plugins-reference
 
 ## Summary
 
-**Marketplaces enable**:
-- Plugin discovery and installation
-- Version management and updates
-- Curated collections
-- Private enterprise distribution
+**Correct Schema Requirements**:
+- ✅ `owner`: Object with `{name, email?}`
+- ✅ `plugins`: Array `[{...}]`
+- ✅ `author`: Object with `{name, email?}` (per plugin)
+- ✅ `source`: String (relative path) OR Object (github/url/npm/pip)
 
-**Critical Schema Requirements**:
-- `owner` field (object with at least `name`)
-- `plugins` field must be an **array**, not an object
-- Use raw GitHub URLs: `raw.githubusercontent.com`
+**Key Points**:
+- For GitHub plugins, use `{"source": "github", "repo": "owner/repo"}`
+- NOT tarball URLs
+- Can pin versions with `ref` and `sha` fields
+- Use `${CLAUDE_PLUGIN_ROOT}` for plugin-internal file references
 
-**Get started**:
-1. Create marketplace manifest with correct schema
-2. Add plugin entries to plugins array
-3. Host on GitHub or npm
-4. Share raw marketplace.json URL
-5. Users install with `/plugin marketplace add`
-
-Marketplaces make it easy to discover, install, and share Claude Code plugins across teams and communities!
+This schema is verified from official Claude Code documentation and is accurate.
