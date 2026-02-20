@@ -1,6 +1,6 @@
 {
   "name": "claude-dev-toolkit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A comprehensive toolkit for building Claude Code extensions including plugins, skills, agents, agent teams, hooks, MCP servers, memory management, and marketplaces",
   "author": {
     "name": "Claude Dev Toolkit Contributors"

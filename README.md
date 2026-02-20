@@ -331,7 +331,12 @@ To add new skills to this toolkit:
 
 ## Version History
 
-### 1.2.0 (2026-02-20)
+### 1.0.1 (2026-02-20)
+- **Critical fix**: Corrected marketplace.json schema in manage-marketplace skill
+- Fixed: `plugins` must be array (not object), `owner` field required
+- Updated all examples, scripts, and automation code with correct schema
+
+### 1.0.0 (2026-02-20)
 - Added manage-marketplace skill for plugin distribution and discovery
 - Complete plugin lifecycle coverage: creation → distribution → installation
 - Enhanced marketplace documentation (GitHub, npm, private/enterprise)
